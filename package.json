@@ -1,0 +1,14 @@
+{
+  "name": "opencode-recap",
+  "version": "1.0.0",
+  "description": "OpenCode TUI plugin — AI session recap in the sidebar",
+  "main": "index.ts",
+  "keywords": ["opencode", "opencode-plugin"],
+  "license": "MIT",
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.4.3",
+    "@opentui/core": "*",
+    "@opentui/solid": "^0.1.100",
+    "solid-js": "^1.9.9"
+  }
+}
