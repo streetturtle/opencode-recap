@@ -16,13 +16,13 @@ This is a **TUI plugin** and must be installed via `tui.json`, not `opencode.jso
 Install the package through OpenCode's plugin installer:
 
 ```sh
-opencode plugin opencode-recap
+opencode plugin @streetturtle/opencode-recap
 ```
 
 For global install:
 
 ```sh
-opencode plugin --global opencode-recap
+opencode plugin --global @streetturtle/opencode-recap
 ```
 
 After install, restart OpenCode. The **Recap** button appears in the sidebar.
@@ -96,5 +96,5 @@ npm publish
 Notes:
 
 - The npm package exposes the TUI entrypoint via `exports["./tui"]`
-- Build output is `dist/tui.js`
+- Build output is `dist/tui.tsx`
 - The plugin id is `streetturtle.recap`

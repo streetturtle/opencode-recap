@@ -19,7 +19,7 @@ npm publish
 ## Quick verification
 
 ```sh
-opencode plugin opencode-recap
+opencode plugin @streetturtle/opencode-recap
 ```
 
 Then restart OpenCode and verify the **Recap** button appears in the sidebar.
