@@ -222,7 +222,7 @@ ${transcript}`
 }
 
 const plugin: TuiPluginModule & { id: string } = {
-  id: "recap",
+  id: "streetturtle.recap",
   tui,
 }
 

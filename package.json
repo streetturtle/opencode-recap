@@ -2,13 +2,31 @@
   "name": "opencode-recap",
   "version": "1.0.0",
   "description": "OpenCode TUI plugin — AI session recap in the sidebar",
-  "main": "index.ts",
+  "type": "module",
+  "exports": {
+    "./tui": "./dist/tui.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "esbuild index.ts --bundle --format=esm --platform=node --packages=external --loader:.ts=tsx --jsx=automatic --jsx-import-source=@opentui/solid --outfile=dist/tui.js",
+    "prepublishOnly": "npm run build"
+  },
   "keywords": ["opencode", "opencode-plugin"],
   "license": "MIT",
+  "engines": {
+    "opencode": ">=1.4.3"
+  },
   "dependencies": {
     "@opencode-ai/plugin": "^1.4.3",
-    "@opentui/core": "*",
-    "@opentui/solid": "^0.1.100",
-    "solid-js": "^1.9.9"
+    "@opentui/core": "^0.2.2",
+    "@opentui/solid": "^0.2.2",
+    "solid-js": "^1.9.12"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.4"
   }
 }

@@ -11,7 +11,23 @@ An [OpenCode](https://opencode.ai) TUI plugin that generates a concise AI summar
 
 This is a **TUI plugin** and must be installed via `tui.json`, not `opencode.json`.
 
-### From GitHub (no npm publish required)
+### Preferred: install from npm
+
+Install the package through OpenCode's plugin installer:
+
+```sh
+opencode plugin opencode-recap
+```
+
+For global install:
+
+```sh
+opencode plugin --global opencode-recap
+```
+
+After install, restart OpenCode. The **Recap** button appears in the sidebar.
+
+### Local file install (development)
 
 **1.** Clone or download `index.ts` into your OpenCode plugins directory:
 
@@ -27,9 +43,9 @@ curl -o ~/.config/opencode/plugins/recap.ts \
 {
   "dependencies": {
     "@opencode-ai/plugin": "^1.4.3",
-    "@opentui/core": "*",
-    "@opentui/solid": "^0.1.100",
-    "solid-js": "^1.9.9"
+    "@opentui/core": "^0.2.2",
+    "@opentui/solid": "^0.2.2",
+    "solid-js": "^1.9.12"
   }
 }
 ```
@@ -68,3 +84,17 @@ The recap follows this structure:
 
 - OpenCode 1.4.3+
 - Any AI provider configured in OpenCode
+
+## Publish
+
+```sh
+npm install
+npm run build
+npm publish
+```
+
+Notes:
+
+- The npm package exposes the TUI entrypoint via `exports["./tui"]`
+- Build output is `dist/tui.js`
+- The plugin id is `streetturtle.recap`
