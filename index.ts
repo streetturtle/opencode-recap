@@ -1,11 +1,16 @@
 /** @jsxImportSource @opentui/solid */
 import { createSignal, Show } from "solid-js"
 import type { TuiPlugin, TuiPluginApi, TuiPluginModule } from "@opencode-ai/plugin/tui"
-import { SyntaxStyle } from "@opentui/core"
+import { SyntaxStyle, TextAttributes } from "@opentui/core"
+
+const PROMPTS_UNTIL_STALE = 3
+const RECENT_MESSAGES = 10
 
 // Module-level signals so the View component reacts to changes
 const recapSignals = new Map<string, ReturnType<typeof createSignal<string | null>>>()
 const loadingSignals = new Map<string, ReturnType<typeof createSignal<boolean>>>()
+// Counts user prompts sent after the last recap was generated
+const promptCounters = new Map<string, number>()
 
 function getRecapSignal(sessionID: string) {
   if (!recapSignals.has(sessionID)) recapSignals.set(sessionID, createSignal<string | null>(null))
@@ -42,9 +47,10 @@ function View(props: { api: TuiPluginApi; session_id: string; onRecap: () => voi
     <box>
       <text
         fg={loading() ? theme().textMuted : theme().text}
+        attributes={TextAttributes.BOLD}
         onMouseDown={() => { if (!loading()) props.onRecap() }}
       >
-        {loading() ? "Generating…" : "Generate Recap"}
+        {loading() ? "Generating..." : "Recap"}
       </text>
       <Show when={recap() !== null && !loading()}>
         <markdown
@@ -58,18 +64,42 @@ function View(props: { api: TuiPluginApi; session_id: string; onRecap: () => voi
 }
 
 const tui: TuiPlugin = async (api) => {
-  const { slots, client } = api
+  const { slots, client, event } = api
+
+  // Track user prompts per session and clear stale recaps
+  event.on("session.status", (e: any) => {
+    const sessionID: string = e.properties?.sessionID
+    if (!sessionID) return
+    const [recap] = getRecapSignal(sessionID)
+    if (recap() === null) return
+
+    if (e.properties?.status?.type === "busy") {
+      const count = (promptCounters.get(sessionID) ?? 0) + 1
+      promptCounters.set(sessionID, count)
+      if (count >= PROMPTS_UNTIL_STALE) {
+        const [, setRecap] = getRecapSignal(sessionID)
+        setRecap(null)
+        promptCounters.set(sessionID, 0)
+      }
+    }
+  })
 
   async function generateRecap(sessionID: string) {
     const [, setRecap] = getRecapSignal(sessionID)
     const [, setLoading] = getLoadingSignal(sessionID)
+    let recapSessionID: string | undefined
+    let idleUnsub: (() => void) | undefined
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined
 
     setLoading(true)
 
+    const [currentRecap] = getRecapSignal(sessionID)
+    const previousRecap = currentRecap()
+
     try {
-      // Fetch messages snapshot for the current session
+      // Fetch only the most recent messages
       const messagesResult = await client.session.messages({ sessionID })
-      const messages = messagesResult.data ?? []
+      const messages = (messagesResult.data ?? []).slice(-RECENT_MESSAGES)
 
       const transcript = messages
         .map((m: any) => {
@@ -89,41 +119,88 @@ const tui: TuiPlugin = async (api) => {
         return
       }
 
-      // Create a throwaway session for the LLM call
-      const newSession = await client.session.create({})
-      const recapSessionID = newSession.data?.id
+      // Create a throwaway session for the LLM call - use a fast/cheap model
+      const newSession = await client.session.create({
+        modelID: "claude-haiku-4.5",
+        providerID: "github-copilot",
+      })
+      recapSessionID = newSession.data?.id
       if (!recapSessionID) throw new Error("Failed to create recap session")
 
-      const prompt = `Summarize this coding session in Markdown. Be extremely terse — sidebar space is limited.
+      const prompt = `You are a summarization assistant. Output only Markdown - no tools, no files, no questions.
 
-**TL;DR:** one sentence.
-**Done:** max 3 bullets, ≤8 words each.
-**Changed:** \`file\` — one phrase (skip if none).
-**Next:** max 2 bullets (skip if none).
+Summarize this coding session in ~40 words across these sections:
+
+**Working on:** one sentence - what is being built or explored
+**Done:** max 2 bullets, <=6 words each (skip if nothing yet)
+**Next:** max 1 bullet - the immediate next step (skip if none)
 
 No intro, no outro, no extra sections. Output only the Markdown.
-
-TRANSCRIPT:
+${previousRecap ? `\nPREVIOUS RECAP (context for earlier history):\n${previousRecap}\n` : ""}
+RECENT TRANSCRIPT (last ${RECENT_MESSAGES} messages):
 ${transcript}`
 
-      const result = await client.session.prompt({
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        timeoutHandle = setTimeout(() => reject(new Error("Recap timed out")), 30_000)
+      )
+
+      // session.prompt fires the request; wait for session to go idle, then fetch messages
+      const idlePromise = new Promise<void>((resolve) => {
+        idleUnsub = api.event.on("session.idle", (e: any) => {
+          if (e.properties?.sessionID === recapSessionID) {
+            idleUnsub?.()
+            idleUnsub = undefined
+            resolve()
+          }
+        })
+      })
+
+      await client.session.prompt({
         sessionID: recapSessionID,
         parts: [{ type: "text", text: prompt }],
       })
 
-      const recapText = (result.data?.parts ?? [])
+      await Promise.race([idlePromise, timeoutPromise])
+
+      // Fetch completed messages to get the assistant's reply
+      const recapMessages = await client.session.messages({ sessionID: recapSessionID })
+      const allMessages = recapMessages.data ?? []
+
+      const lastAssistantMsg = [...allMessages]
+        .reverse()
+        .find((m: any) => {
+          const role = m.info?.role ?? m.role
+          if (role !== "assistant") return false
+          // Exclude messages that contain the prompt we sent (echoed back as assistant)
+          const text = (m.parts ?? [])
+            .filter((p: any) => p.type === "text")
+            .map((p: any) => p.text ?? "")
+            .join("")
+          return !text.includes("You are a summarization assistant")
+        })
+
+      const recapText = (lastAssistantMsg?.parts ?? [])
         .filter((p: any) => p.type === "text")
-        .map((p: any) => (p as any).text ?? "")
+        .map((p: any) => p.text ?? "")
         .join("")
         .trim()
 
       setRecap(recapText || "*No summary generated.*")
+      promptCounters.set(sessionID, 0)
 
-      // Clean up throwaway session
-      await client.session.delete({ sessionID: recapSessionID }).catch(() => {})
     } catch (err: any) {
       setRecap(`*Error: ${err?.message ?? String(err)}*`)
     } finally {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle)
+      }
+      if (idleUnsub) {
+        idleUnsub()
+        idleUnsub = undefined
+      }
+      if (recapSessionID) {
+        await client.session.delete({ sessionID: recapSessionID }).catch(() => {})
+      }
       setLoading(false)
     }
   }

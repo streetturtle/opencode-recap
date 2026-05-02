@@ -2,9 +2,10 @@
 
 An [OpenCode](https://opencode.ai) TUI plugin that generates a concise AI summary of your current session and displays it in the sidebar.
 
-- Click **Generate Recap** in the sidebar to trigger a summary
+- Click **Recap** in the sidebar to trigger a summary
 - Output renders as Markdown, styled with your active theme
 - Summary appears in the sidebar — not in the chat thread
+- Recap auto-clears after 3 new prompts so it doesn't go stale
 
 ## Installation
 
@@ -49,18 +50,19 @@ BUN_BE_BUN=1 /opt/homebrew/bin/opencode install
 
 > Adjust the path to `opencode` if you installed it elsewhere (`which opencode`).
 
-**5.** Restart OpenCode. The **Generate Recap** button will appear in the sidebar.
+**5.** Restart OpenCode. The **Recap** button will appear in the sidebar.
 
 ## Usage
 
-Open a session, have a conversation, then click **Generate Recap** in the sidebar. The summary updates in place each time you click it.
+Open a session, have a conversation, then click **Recap** in the sidebar. The summary updates in place each time you click it.
+
+The plugin summarizes only recent context (last 10 messages) and includes your previous recap as context to keep continuity.
 
 The recap follows this structure:
 
-- **TL;DR** — one-sentence goal
-- **Done** — up to 3 bullets of what was accomplished
-- **Changed** — key files modified (omitted if none)
-- **Next** — suggested next steps (omitted if none)
+- **Working on** — one sentence on current focus
+- **Done** — up to 2 short bullets
+- **Next** — immediate next step (if any)
 
 ## Requirements
 
