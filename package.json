@@ -9,7 +9,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "recap.png"
   ],
   "scripts": {
     "build": "rm -rf dist && mkdir -p dist && cp index.ts dist/tui.tsx",
