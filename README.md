@@ -74,6 +74,29 @@ Open a session, have a conversation, then click **Recap** in the sidebar. The su
 
 The plugin summarizes only recent context (last 10 messages) and includes your previous recap as context to keep continuity.
 
+### Optional model preferences
+
+By default, recap uses the session's recent assistant model.
+
+You can override this by passing plugin options in `tui.json`:
+
+```json
+{
+  "plugin": [
+    ["@streetturtle/opencode-recap", {
+      "providerID": "github-copilot",
+      "modelID": "claude-haiku-4.5"
+    }]
+  ]
+}
+```
+
+Notes:
+
+- `providerID` and `modelID` must be set together
+- if only one is set, recap shows a config error
+- model selection is applied on the recap `session.prompt` call
+
 The recap follows this structure:
 
 - **Working on** — one sentence on current focus
